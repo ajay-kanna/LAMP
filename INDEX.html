@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L.A.M.P. Application</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Material Icons for heart icon -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Firebase SDKs - ALWAYS use the latest compatible versions -->
+    <script type="module">
+        console.log("Module script: Starting Firebase SDK imports.");
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // IMPORTANT: Added getDoc for direct document retrieval
+        import { getFirestore, collection, doc, addDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // New: Import getAnalytics if you plan to use Firebase Analytics
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        console.log("Module script: Firebase SDK imports complete.");
+
+        // Firebase Configuration - REPLACE WITH YOUR ACTUAL CONFIG
+        // You'll get this from your Firebase Project Settings -> General -> Your Apps
+        const firebaseConfig = {
+            apiKey: "AIzaSyAHO24b9h2MrJK14A-r3-4VGI7ZcjqQwtY", // IMPORTANT: Replace with your actual API Key. MUST be a string enclosed in double quotes!
+            authDomain: "lamp-heartfulness.firebaseapp.com", // IMPORTANT: Replace with your actual Auth Domain. MUST be a string enclosed in double quotes!
+            projectId: "lamp-heartfulness", // IMPORTANT: Replace with your actual Project ID. MUST be a string enclosed in double quotes!
+            storageBucket: "lamp-heartfulness.firebasestorage.app", // IMPORTANT: Replace with your actual Storage Bucket. MUST be a string enclosed in double quotes!
+            messagingSenderId: "789908113838", // IMPORTANT: Replace with your actual Messaging Sender ID. MUST be a string enclosed in double quotes!
+            appId: "1:789908113838:web:288a892e807ef7276ea03f", // IMPORTANT: Replace with your actual App ID. MUST be a string enclosed in double quotes!
+            measurementId: "G-9RKF54LK66" // New: Add measurementId if using Analytics. MUST be a string enclosed in double quotes!
+        };
+        console.log("Module script: Firebase config defined:", firebaseConfig); // Debugging: Check if config is parsed correctly
+
+        // Initialize Firebase
+        try {
+            console.log("Module script: Attempting to initialize Firebase app.");
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            const analytics = getAnalytics(app); // New: Initialize Analytics
+            console.log("Module script: Firebase initialized successfully."); // Debugging: Confirm Firebase initialization
+
+            // Export Firebase instances to be used globally in our script.js
+            window.firebaseApp = app;
+            window.firebaseAuth = auth;
+            window.firebaseDb = db;
+            window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+            window.signOut = signOut;
+            window.onAuthStateChanged = onAuthStateChanged;
+            window.collection = collection;
+            window.doc = doc;
+            window.addDoc = addDoc;
+            window.getDocs = getDocs;
+            window.updateDoc = updateDoc;
+            window.deleteDoc = deleteDoc;
+            window.onSnapshot = onSnapshot;
+            window.query = query;
+            window.where = where;
+            window.getDoc = getDoc; // Export getDoc as well
+            window.setDoc = setDoc; // Export setDoc
+            window.createUserWithEmailAndPassword = createUserWithEmailAndPassword; // Export createUserWithEmailAndPassword
+            window.firebaseAnalytics = analytics; // New: Export analytics
+            console.log("Module script: Firebase instances exported to window object.");
+        } catch (initError) {
+            console.error("Module script: Error initializing Firebase (caught in module script):", initError);
+            // This error might prevent the rest of the script from running.
+            // Further debugging would involve checking the browser's console for more specific errors.
+        }
+    </script>
+
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAFAF2; /* Primary Background: Very Light Cream */
+            margin: 0;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+            color: #333333; /* Text Primary */
+        }
+
+        /* Custom Colors from Design Breakdown */
+        .bg-primary-background { background-color: #FAFAF2; }
+        .text-primary { color: #333333; }
+        .bg-accent-teal { background-color: #008080; }
+        .text-accent-teal { color: #008080; }
+        .bg-accent-yellow { background-color: #DAA520; }
+        .text-accent-yellow { color: #DAA520; }
+        .bg-heart-blue { background-color: #3498DB; }
+        .text-heart-blue { color: #3498DB; }
+        .bg-purple-500 { background-color: #6B46C1; }
+        .text-purple-500 { color: #6B46C1; }
+        .bg-indigo-700 { background-color: #4338CA; }
+        .text-indigo-700 { color: #4338CA; }
+        .bg-green-600 { background-color: #34D399; }
+        .text-green-600 { color: #34D399; }
+        .bg-red-500 { background-color: #EF4444; }
+        .text-red-500 { color: #EF4444; }
+        .bg-gray-100 { background-color: #F3F4F6; }
+        .bg-gray-200 { background-color: #E5E7EB; }
+        .bg-gray-300 { background-color: #D1D5DB; }
+        .bg-gray-400 { background-color: #9CA3AF; }
+        .text-gray-500 { color: #6B7280; }
+        .text-gray-600 { color: #4B5563; }
+        .text-gray-700 { color: #374151; } /* Darker gray for text */
+        .text-purple-700 { color: #5B21B6; } /* Deeper purple */
+        .text-teal-600 { color: #0D9488; } /* Darker teal */
+        .bg-blue-500 { background-color: #3B82F6; }
+        .bg-indigo-500 { background-color: #6366F1; }
+
+        /* Animation specific styles */
+        .initial-animation-container {
+            position: fixed; /* Fix to viewport */
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #FAFAF2; /* Primary Background */
+            z-index: 1000; /* On top of everything */
+            transition: opacity 1s ease-out, visibility 1s ease-out;
+        }
+        .initial-animation-container.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .animation-inner-circle-container {
+            position: relative;
+            width: 80vmin; /* Responsive width based on viewport */
+            height: 80vmin; /* Responsive height based on viewport */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+        }
+
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            box-sizing: border-box;
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: all 1s ease-out; 
+            box-shadow: 0 0 15px rgba(0, 128, 128, 0.7);
+        }
+        .circle.show {
+            opacity: 1;
+        }
+
+        .heartfulness-text {
+            position: absolute;
+            font-size: 8vmin;
+            color: #4169E1;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 2s ease-in-out, transform 2s ease-in-out;
+            text-shadow: 0 0 20px rgba(65, 105, 225, 0.8);
+            font-weight: 700;
+            text-align: center;
+            pointer-events: none;
+        }
+        .heartfulness-text.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .login-container {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
+            width: 90%;
+            max-width: 400px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 1s ease-in-out, transform 1s ease-in-out;
+            z-index: 1001; /* Above animation container */
+        }
+        .login-container.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .login-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #008080;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #D1D5DB;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            box-sizing: border-box;
+            background-color: white; /* Ensure consistent background */
+        }
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .app-button {
+            width: 100%;
+            padding: 0.75rem;
+            color: white;
+            font-weight: 700;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease, opacity 0.3s ease;
+        }
+        .app-button:hover:not(:disabled) {
+            filter: brightness(1.1); /* Slightly brighter on hover */
+        }
+        .app-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-message, .success-message {
+            text-align: center;
+            margin-top: 1rem;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+        }
+        .error-message { color: #EF4444; background-color: #fee2e2; }
+        .success-message { color: #34D399; background-color: #d1fae5; }
+        .error-message.show, .success-message.show {
+            opacity: 1;
+        }
+
+        /* Main App Container */
+        #app-content {
+            display: none; /* Hidden until authenticated */
+            width: 100%;
+            padding-top: 64px; /* Space for fixed AppBar */
+        }
+
+        /* AppBar Styles */
+        .app-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Elevation 4 */
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem; /* py-3 px-4 */
+        }
+        .app-bar-title-group {
+            display: flex;
+            align-items: center;
+        }
+        .app-bar-icon {
+            font-size: 1.75rem; /* text-2xl */
+            color: #3498DB; /* Heart Blue */
+            margin-right: 0.5rem; /* mr-2 */
+        }
+        .app-bar-title {
+            font-size: 1.375rem; /* text-2xl */
+            font-weight: 700; /* font-bold */
+            color: #008080; /* Accent Teal */
+        }
+        .app-bar-actions button {
+            background: none;
+            border: none;
+            color: #333333; /* Text Primary */
+            font-size: 1.5rem; /* text-2xl */
+            padding: 0.5rem;
+            cursor: pointer;
+            border-radius: 9999px; /* rounded-full */
+            transition: background-color 0.2s ease;
+        }
+        .app-bar-actions button:hover {
+            background-color: #F3F4F6; /* Gray 100 */
+        }
+
+        /* Page Layout Structure */
+        .page-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem; /* p-4 */
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem; /* gap-6 */
+        }
+        @media (min-width: 768px) { /* md */
+            .page-container {
+                padding: 1.5rem; /* p-6 */
+            }
+        }
+        @media (min-width: 1024px) { /* lg */
+            .page-container {
+                padding: 2rem; /* p-8 */
+            }
+        }
+
+        .section-card {
+            background-color: white;
+            border-radius: 1rem; /* rounded-2xl */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); /* shadow-md */
+            padding: 1.5rem; /* p-6 */
+            border-bottom-width: 4px; /* border-b-4 */
+        }
+        .section-title {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 600; /* font-semibold */
+            margin-bottom: 1rem; /* mb-4 */
+        }
+
+        /* Specific Admin Page Styles */
+        .section-card.border-purple-600 { border-color: #6B46C1; } /* Purple 600 */
+        .section-card.border-accent-teal { border-color: #008080; } /* Accent Teal */
+        .section-card.border-accent-yellow { border-color: #DAA520; } /* Accent Yellow */
+        .section-card.border-gray-400 { border-color: #9CA3AF; } /* Gray 400 */
+
+        .admin-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.875rem; /* text-sm */
+        }
+        .admin-data-table th, .admin-data-table td {
+            border: 1px solid #E5E7EB; /* Gray 200 */
+            padding: 0.75rem; /* p-3 */
+            text-align: left;
+        }
+        .admin-data-table th {
+            background-color: #F3F4F6; /* Gray 100 */
+            font-weight: 600;
+            color: #4B5563; /* Gray 600 */
+        }
+        .admin-data-table tr:nth-child(even) {
+            background-color: #F9FAFB; /* Light subtle stripe */
+        }
+        .admin-data-table tr:hover {
+            background-color: #EBF8FF; /* Light blue on hover */
+        }
+        .admin-data-table button {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+        }
+
+        .flex-wrap-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem; /* Space between items */
+            margin-top: 1rem;
+        }
+        .badge-chip {
+            background-color: #F3F4F6; /* Gray 100 */
+            border-radius: 9999px; /* rounded-full */
+            padding: 0.5rem 1rem; /* py-2 px-4 */
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4B5563;
+        }
+        .badge-chip img {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh; /* Limit height for scrollability */
+            overflow-y: auto; /* Enable scrolling for long content */
+            position: relative;
+        }
+
+        .modal-close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6B7280;
+            transition: color 0.2s ease;
+        }
+        .modal-close-button:hover {
+            color: #333333;
+        }
+
+        .modal-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+        .modal-table th, .modal-table td {
+            border: 1px solid #E5E7EB;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        .modal-table th {
+            background-color: #F3F4F6;
+            font-weight: 600;
+            color: #4B5563;
+        }
+    </style>
+</head>
+<body>
+    <!-- Initial Animation and Login Screen -->
+    <div id="initialAnimationContainer" class="initial-animation-container">
+        <div id="animationInnerCircleContainer" class="animation-inner-circle-container">
+            <!-- Circles will be dynamically added here by JavaScript -->
+        </div>
+        <div id="heartfulnessText" class="heartfulness-text">
+            Heartfulness
+        </div>
+        <div id="loginContainer" class="login-container">
+            <h2 class="login-title">Admin Login</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required value="admin@lamp.com"> <!-- Default for ease of testing -->
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required value="openupsimsim"> <!-- Default for ease of testing -->
+                </div>
+                <button type="submit" class="app-button bg-accent-teal">Login</button>
+                <p id="authMessage" class="hidden"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application Content Area -->
+    <div id="app-content">
+        <!-- AppBar Component -->
+        <div class="app-bar">
+            <div class="app-bar-title-group">
+                <span class="app-bar-icon material-icons">favorite</span> <!-- Heart icon -->
+                <span class="app-bar-title">L.A.M.P</span>
+            </div>
+            <div class="flex items-center">
+                <span id="welcomeMessage" class="mr-4 text-primary font-semibold text-lg"></span>
+                <button id="logoutBtn" title="Logout" class="text-primary text-2xl p-2 rounded-full hover:bg-gray-100 transition-colors">🚪</button>
+            </div>
+        </div>
+
+        <!-- Page Specific Content will be rendered here by JavaScript -->
+        <div id="page-view" class="page-container">
+            <!-- Dynamic content will be loaded here based on user role -->
+        </div>
+    </div>
+
+    <script>
+        // Global variables for Firebase instances (assigned from the module script)
+        let firebaseApp, firebaseAuth, firebaseDb, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, doc, addDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where, getDoc, setDoc, createUserWithEmailAndPassword, firebaseAnalytics;
+
+        console.log("Main script: Script block started."); // Debugging: Confirm script execution starts
+
+        // Add a global error handler to catch uncaught errors and provide more context
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error("Global uncaught error:", {
+                message: message,
+                source: source,
+                lineno: lineno,
+                colno: colno,
+                error: error
+            });
+            // You might want to display this to the user in a more user-friendly way
+            const authMessageElem = document.getElementById('authMessage');
+            if (authMessageElem) {
+                displayMessage(authMessageElem, `An unexpected error occurred: ${message} at line ${lineno}. See console for details.`, 'error');
+            }
+            return true; // Prevent default error handling
+        };
+
+        // Wait for Firebase SDK to be loaded and window.onload to ensure DOM is ready
+        window.addEventListener('load', () => {
+            console.log("Main script: Window loaded, attempting to assign Firebase globals."); // Debugging: Confirm window load event
+
+            // Assign global Firebase instances once they are available from the module script
+            // These assignments are safe because they happen after the module script has executed
+            firebaseApp = window.firebaseApp;
+            firebaseAuth = window.firebaseAuth;
+            firebaseDb = window.firebaseDb;
+            signInWithEmailAndPassword = window.signInWithEmailAndPassword;
+            signOut = window.signOut;
+            onAuthStateChanged = window.onAuthStateChanged;
+            collection = window.collection;
+            doc = window.doc;
+            addDoc = window.addDoc;
+            getDocs = window.getDocs;
+            updateDoc = window.updateDoc;
+            deleteDoc = window.deleteDoc;
+            onSnapshot = window.onSnapshot;
+            query = window.query;
+            where = window.where;
+            getDoc = window.getDoc; // Assign getDoc
+            setDoc = window.setDoc; // Assign setDoc
+            createUserWithEmailAndPassword = window.createUserWithEmailAndPassword; // Assign createUserWithEmailAndPassword
+            firebaseAnalytics = window.firebaseAnalytics; // New: Assign analytics
+
+            // Check if Firebase is initialized before proceeding
+            if (!firebaseApp || !firebaseAuth || !firebaseDb) {
+                console.error("Main script: Firebase is not initialized. Please ensure your firebaseConfig is correct and the SDKs are loaded in the module script.");
+                displayMessage(document.getElementById('authMessage'), 'Application error: Firebase not initialized. Check console for details.', 'error');
+                return; // Stop execution if Firebase is not ready
+            } else {
+                console.log("Main script: Firebase SDKs are loaded and initialized.");
+            }
+
+            // DOM Elements
+            const initialAnimationContainer = document.getElementById('initialAnimationContainer');
+            const animationInnerCircleContainer = document.getElementById('animationInnerCircleContainer');
+            const heartfulnessText = document.getElementById('heartfulnessText');
+            const loginContainer = document.getElementById('loginContainer');
+            const loginForm = document.getElementById('loginForm');
+            const authMessage = document.getElementById('authMessage');
+            const appContent = document.getElementById('app-content');
+            const pageView = document.getElementById('page-view');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const welcomeMessage = document.getElementById('welcomeMessage'); // New element for welcome message
+
+            // --- Animation Logic (Re-used from previous response) ---
+            const numCircles = 23; 
+            const circles = [];
+
+            const maxRadius = animationInnerCircleContainer.offsetWidth / 2 * 0.9; 
+
+            for (let i = 0; i < numCircles; i++) {
+                const circle = document.createElement('div');
+                circle.classList.add('circle');
+                const circleNumber = i + 1; 
+                const isBrighterCircle = circleNumber === 7 || circleNumber === 18 || circleNumber === 23;
+                const currentRadius = (i + 1) * (maxRadius / numCircles);
+                const borderWidth = isBrighterCircle ? 3.0 : 2.0;
+                const opacity = isBrighterCircle ? 1.0 : (1.0 - (i * 0.03)); 
+                
+                circle.style.border = `${borderWidth}px solid rgba(0, 128, 128, ${Math.max(0, Math.min(1, opacity))})`;
+                const circleDiameter = (currentRadius * 2) - (2 * borderWidth);
+                circle.style.width = `${circleDiameter}px`;
+                circle.style.height = `${circleDiameter}px`;
+                circle.style.boxShadow = `0 0 15px rgba(0, 128, 128, ${isBrighterCircle ? 1.0 : 0.7})`;
+                circle.style.left = '50%';
+                circle.style.top = '50%';
+                animationInnerCircleContainer.appendChild(circle);
+                circles.push(circle);
+            }
+
+            const showCircles = () => {
+                circles.forEach((circle, index) => {
+                    setTimeout(() => {
+                        circle.classList.add('show');
+                    }, index * 100); 
+                });
+            };
+
+            const showHeartfulnessText = () => {
+                heartfulnessText.classList.add('show');
+            };
+
+            const startInitialAnimation = () => {
+                showCircles();
+                setTimeout(() => {
+                    showHeartfulnessText();
+                }, (numCircles * 100) + 500);
+                setTimeout(() => {
+                    loginContainer.classList.add('show');
+                }, (numCircles * 100) + 1500);
+            };
+
+            startInitialAnimation(); // Start the animation on page load
+
+            // --- Firebase Authentication & Routing Logic ---
+            let currentUser = null;
+            let userRole = null;
+            let currentDisplayName = "User"; // Default display name
+            let unsubscribeSnapshots = []; // To store snapshot listeners for cleanup
+
+            // Function to display messages
+            function displayMessage(element, message, type = 'error') {
+                element.textContent = message;
+                element.className = `${type}-message show`;
+            }
+
+            // Function to clear messages
+            function clearMessage(element) {
+                element.classList.remove('show', 'error-message', 'success-message');
+                element.textContent = '';
+            }
+
+            // Function to render different pages
+            async function renderPage(role) {
+                console.log(`[renderPage] Attempting to render page for role: ${role}`);
+                pageView.innerHTML = ''; // Clear current page content
+                // Only render Admin Dashboard; any other role will be logged out.
+                if (role === 'admin') {
+                    await renderAdminDashboard();
+                } else {
+                    displayMessage(authMessage, 'Access Denied: Only administrators can access this application.', 'error');
+                    signOut(firebaseAuth); // Force logout for non-admin roles
+                }
+            }
+
+            // Listen for authentication state changes
+            onAuthStateChanged(firebaseAuth, async (user) => {
+                console.log("[onAuthStateChanged] fired. User:", user ? user.uid : "null");
+                if (user) {
+                    currentUser = user;
+                    try {
+                        console.log(`[onAuthStateChanged] Attempting to fetch user document for UID: ${user.uid}`);
+                        // Use getDoc directly with the user's UID as the document ID
+                        const userDocRef = doc(firebaseDb, "users", user.uid);
+                        const userDocSnap = await getDoc(userDocRef);
+                        
+                        if (userDocSnap.exists()) {
+                            const userData = userDocSnap.data();
+                            userRole = userData.role;
+                            currentDisplayName = userData.displayName || userData.email.split('@')[0]; // Use display name or part of email
+                            welcomeMessage.textContent = `Hello, ${currentDisplayName}`;
+                            console.log(`[onAuthStateChanged] User document found. Data:`, userData, `Role: ${userRole}`);
+
+                            if (userRole !== 'admin') { // Only allow admin role
+                                displayMessage(authMessage, 'Access Denied: Only administrators can access this application.', 'error');
+                                signOut(firebaseAuth);
+                                return;
+                            }
+                            initialAnimationContainer.classList.add('hidden'); // Hide animation and login
+                            appContent.style.display = 'block'; // Show app content
+                            await renderPage(userRole); // Render the appropriate dashboard
+                        } else {
+                            // User document not found, this should not happen if creation is handled correctly
+                            console.warn(`[onAuthStateChanged] User document NOT found for UID: ${user.uid}. Logging out.`);
+                            displayMessage(authMessage, 'User profile not found in database. Logging out.', 'error');
+                            signOut(firebaseAuth);
+                        }
+                    } catch (error) {
+                        console.error("[onAuthStateChanged] Error fetching user role:", error);
+                        displayMessage(authMessage, 'Error retrieving user data. Please try again or contact support.', 'error');
+                        signOut(firebaseAuth);
+                    }
+                } else {
+                    console.log("[onAuthStateChanged] User logged out or no user found. Showing login screen.");
+                    currentUser = null;
+                    userRole = null;
+                    currentDisplayName = "User"; // Reset display name
+                    welcomeMessage.textContent = ""; // Clear welcome message
+                    initialAnimationContainer.classList.remove('hidden'); // Show animation and login
+                    loginContainer.classList.add('show'); // Ensure login form is visible
+                    appContent.style.display = 'none'; // Hide app content
+                    clearMessage(authMessage);
+
+                    // Clear all snapshot listeners when logged out
+                    unsubscribeSnapshots.forEach(unsub => unsub());
+                    unsubscribeSnapshots = [];
+                }
+            });
+
+            // Login Form Submission
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                clearMessage(authMessage);
+
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+
+                console.log(`[Login Form] Attempting login for: ${email}`);
+                try {
+                    const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+                    console.log("[Login Form] Login successful. User credential:", userCredential.user.uid);
+                    displayMessage(authMessage, 'Login successful!', 'success');
+                    // onAuthStateChanged listener will now handle the dashboard rendering
+                } catch (error) {
+                    let errorMessage = 'Login failed. Please check your credentials.';
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                        errorMessage = 'Invalid email or password.';
+                    } else if (error.code === 'auth/invalid-email') {
+                        errorMessage = 'Invalid email format.';
+                    } else if (error.code === 'auth/too-many-requests') {
+                        errorMessage = 'Too many login attempts. Please try again later.';
+                    }
+                    displayMessage(authMessage, errorMessage, 'error');
+                    console.error("[Login Form] Login error:", error);
+                }
+            });
+
+            // Logout Button
+            logoutBtn.addEventListener('click', async () => {
+                console.log("[Logout Button] clicked.");
+                try {
+                    await signOut(firebaseAuth);
+                    displayMessage(authMessage, 'You have been logged out.', 'success');
+                    console.log("[Logout Button] User signed out.");
+                } catch (error) {
+                    displayMessage(authMessage, 'Error logging out. Please try again.', 'error');
+                    console.error("[Logout Button] Logout error:", error);
+                }
+            });
+
+            // --- Admin Dashboard Rendering ---
+            async function renderAdminDashboard() {
+                console.log("[renderAdminDashboard] Rendering Admin Dashboard...");
+                if (userRole !== 'admin') {
+                    pageView.innerHTML = `<h2 class="text-red-500 text-center mt-8 text-xl">Access Denied: You do not have administrator privileges.</h2>`;
+                    console.warn("[renderAdminDashboard] Access denied: User is not admin.");
+                    return;
+                }
+
+                pageView.innerHTML = `
+                    <h1 class="text-3xl md:text-4xl font-bold text-accent-teal mb-4 md:mb-6">Admin Dashboard</h1>
+                    <p class="text-lg text-gray-600 mb-6">Manage Badges, Tasks, and Users.</p>
+                    <p id="adminMessages" class="text-sm text-gray-500 mb-6">Messages: No new notifications.</p>
+
+                    <!-- Add New Global Task Section -->
+                    <div class="section-card border-accent-teal">
+                        <h2 class="section-title text-accent-teal">Add New Task</h2>
+                        <form id="addTaskForm" class="flex flex-col gap-4">
+                            <div class="form-group">
+                                <label for="taskName">Task Name:</label>
+                                <input type="text" id="taskName" required placeholder="e.g., Learn Heartfulness Meditation">
+                            </div>
+                            <div class="form-group">
+                                <label for="taskDescription">Task Description:</label>
+                                <textarea id="taskDescription" required rows="3" placeholder="e.g., Complete the 7-day introductory meditation program."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="videoUrl">Video URL:</label>
+                                <input type="url" id="videoUrl" required placeholder="e.g., https://youtube.com/watch?v=example">
+                            </div>
+                            <div class="form-group">
+                                <label for="documentUrl">Document URL:</label>
+                                <input type="url" id="documentUrl" required placeholder="e.g., https://example.com/guide.pdf">
+                            </div>
+                            <div class="form-group">
+                                <label for="taskDeadline">Deadline:</label>
+                                <input type="date" id="taskDeadline" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="taskTopic">Task Topic:</label>
+                                <select id="taskTopic" required>
+                                    <option value="">Select Topic</option>
+                                    <option value="Spirituality">Spirituality</option>
+                                    <option value="Topic1">Topic1</option>
+                                    <option value="Topic2">Topic2</option>
+                                    <option value="Topic3">Topic3</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="app-button bg-accent-teal">Add Task</button>
+                            <p id="addTaskMessage" class="hidden"></p>
+                        </form>
+                    </div>
+
+                    <!-- Global Tasks Section (now topic-based) -->
+                    <div class="section-card border-accent-yellow">
+                        <h2 class="section-title text-accent-yellow">Available Tasks (for Assignment)</h2>
+                        <div id="globalTasksList">
+                            <p class="text-gray-500">Loading available tasks...</p>
+                        </div>
+                    </div>
+
+                    <!-- Set Daaji Live Link Section -->
+                    <div class="section-card border-gray-400">
+                        <h2 class="section-title text-gray-700">Set Daaji Live Link</h2>
+                        <form id="setLiveLinkForm" class="flex flex-col gap-4">
+                            <div class="form-group">
+                                <label for="daajiLiveLink">Daaji Live Stream Link:</label>
+                                <input type="url" id="daajiLiveLink" required placeholder="e.g., https://youtube.com/live/daaji">
+                            </div>
+                            <button type="submit" class="app-button bg-indigo-500">Set Daaji Live Link</button>
+                            <p id="setLiveLinkMessage" class="hidden"></p>
+                        </form>
+                    </div>
+
+                    <!-- Add New Badge Section (moved below tasks) -->
+                    <div class="section-card border-purple-600">
+                        <h2 class="section-title text-purple-700">Add New Badge</h2>
+                        <form id="addBadgeForm" class="flex flex-col gap-4">
+                            <div class="form-group">
+                                <label for="badgeName">Badge Name:</label>
+                                <input type="text" id="badgeName" required placeholder="e.g., Meditation Master">
+                            </div>
+                            <div class="form-group">
+                                <label for="badgeIconUrl">Badge Icon URL (Placeholder):</label>
+                                <input type="url" id="badgeIconUrl" required placeholder="e.g., https://placehold.co/40x40/008080/FFFFFF?text=BM">
+                            </div>
+                            <div class="form-group">
+                                <label for="badgeDescription">Badge Description:</label>
+                                <textarea id="badgeDescription" required rows="3" placeholder="e.g., Awarded for consistent meditation practice."></textarea>
+                            </div>
+                            <button type="submit" class="app-button bg-purple-500">Add Badge</button>
+                            <p id="addBadgeMessage" class="hidden"></p>
+                        </form>
+                    </div>
+
+                    <!-- Send Quiz Notification Section -->
+                    <div class="section-card border-gray-400">
+                        <h2 class="section-title text-gray-700">Send Quiz Notification</h2>
+                        <form id="sendQuizForm" class="flex flex-col gap-4">
+                            <div class="form-group">
+                                <label for="quizLink">Quiz Link:</label>
+                                <input type="url" id="quizLink" required placeholder="e.g., https://forms.gle/yourquiz">
+                            </div>
+                            <div class="form-group">
+                                <label for="quizTopic">Relevant Task Topic:</label>
+                                <select id="quizTopic" required>
+                                    <option value="">Select Topic</option>
+                                    <option value="Spirituality">Spirituality</option>
+                                    <option value="Topic1">Topic1</option>
+                                    <option value="Topic2">Topic2</option>
+                                    <option value="Topic3">Topic3</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="app-button bg-blue-500">Send Quiz Notification</button>
+                            <p id="sendQuizMessage" class="hidden"></p>
+                        </form>
+                    </div>
+
+                    <!-- User Management Section -->
+                    <div class="section-card border-purple-600">
+                        <h2 class="section-title text-purple-700">User Management</h2>
+                        <p class="text-gray-600 mb-4">View, add, edit, and delete users.</p>
+
+                        <!-- Add New User Form -->
+                        <h3 class="text-lg font-semibold text-purple-700 mb-3">Add New User</h3>
+                        <form id="addUserForm" class="flex flex-col gap-4 mb-6">
+                            <div class="form-group">
+                                <label for="newUserEmail">Email:</label>
+                                <input type="email" id="newUserEmail" required placeholder="user@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="newUserPassword">Initial Password:</label>
+                                <input type="text" id="newUserPassword" required placeholder="min 6 characters">
+                            </div>
+                            <div class="form-group">
+                                <label for="newUserName">Display Name:</label>
+                                <input type="text" id="newUserName" required placeholder="Full Name">
+                            </div>
+                            <div class="form-group">
+                                <label for="newUserRole">Role:</label>
+                                <select id="newUserRole" required>
+                                    <option value="">Select Role</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="chaperone">Chaperone</option>
+                                    <option value="protégé">Protégé</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="newUserLocation">Location:</label>
+                                <input type="text" id="newUserLocation" required placeholder="City or Country">
+                            </div>
+                            <div class="form-group">
+                                <label for="newUserLanguage">Language:</label>
+                                <input type="text" id="newUserLanguage" required placeholder="e.g., English, Hindi">
+                            </div>
+                            <div class="form-group">
+                                <label for="newUserPhone">Phone:</label>
+                                <input type="tel" id="newUserPhone" required placeholder="+1234567890">
+                            </div>
+                            <button type="submit" class="app-button bg-purple-500">Add User</button>
+                            <p id="addUserMessage" class="hidden"></p>
+                        </form>
+
+                        <h3 class="text-lg font-semibold text-purple-700 mb-3">Add Users from CSV</h3>
+                        <p class="text-gray-600 mb-2">Upload a CSV file with 'email', 'password', 'displayName', 'role', 'location', 'language', 'phone' columns.</p>
+                        <input type="file" id="csvUserFileInput" accept=".csv" class="mb-4 p-2 border rounded-md w-full">
+                        <button id="uploadCsvUserButton" class="app-button bg-blue-500">Upload CSV for Users</button>
+                        <p id="csvUserUploadMessage" class="hidden"></p>
+
+                        <!-- All Users Table -->
+                        <h3 class="text-lg font-semibold text-purple-700 mb-3 mt-6">All Users</h3>
+                        <div id="allUsersList">
+                            <p class="text-gray-500">Loading users...</p>
+                        </div>
+                    </div>
+
+                    <!-- Automatic Chaperone-Protégé Assignment Section -->
+                    <div class="section-card border-indigo-700">
+                        <h2 class="section-title text-indigo-700">Automatic Chaperone-Protégé Assignment</h2>
+                        <p class="text-gray-600 mb-4">This will automatically assign unassigned protégés to available chaperones, prioritizing those in the same location and language.</p>
+                        <button type="submit" id="autoAssignButton" class="app-button bg-indigo-700">Run Auto-Assignment</button>
+                        <p id="automaticAssignmentMessage" class="hidden"></p>
+                    </div>
+
+                    <!-- Manual Chaperone Assignment Section -->
+                    <div class="section-card border-purple-500">
+                        <h2 class="section-title text-purple-500">Manual Chaperone Assignment</h2>
+                        <form id="manualAssignmentForm" class="flex flex-col gap-4 mb-6">
+                            <div class="form-group">
+                                <label for="selectProtege">Select Protégé:</label>
+                                <select id="selectProtege" required>
+                                    <option value="">Loading protégés...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="selectChaperone">Select Chaperone:</label>
+                                <select id="selectChaperone" required>
+                                    <option value="">Loading chaperones...</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="app-button bg-purple-500">Assign/Reassign Protégé</button>
+                            <p id="manualAssignmentMessage" class="hidden"></p>
+                        </form>
+
+                        <h3 class="text-lg font-semibold text-purple-700 mb-3">Assign from CSV</h3>
+                        <p class="text-gray-600 mb-2">Upload a CSV file with 'protegeId' and 'chaperoneId' columns to assign multiple protégés.</p>
+                        <input type="file" id="csvFileInput" accept=".csv" class="mb-4 p-2 border rounded-md w-full">
+                        <button id="uploadCsvButton" class="app-button bg-blue-500">Upload CSV for Assignment</button>
+                        <p id="csvUploadMessage" class="hidden"></p>
+                    </div>
+
+                    <!-- Chaperone-Protégé Assignments Overview Section -->
+                    <div class="section-card border-gray-400">
+                        <h2 class="section-title text-gray-700">Chaperone-Protégé Assignments Overview</h2>
+                        <div id="assignmentsOverviewContainer">
+                            <p class="text-gray-500">Loading assignments...</p>
+                        </div>
+                    </div>
+                `;
+
+                // Initialize form listeners and data loaders for Admin
+                initAdminForms();
+                loadGlobalTasks(); // Loads available tasks
+                loadDaajiLiveLink(); // Load existing link for editing
+                initAutomaticAssignment(); // Initialize the automatic assignment button
+                initManualAssignmentForm(); // Initialize the new manual assignment form
+                initCsvAssignment(); // Initialize the CSV assignment
+                loadAssignmentsOverview(); // This will now include protégé task progress
+                loadAllUsers(); // Load all users for the new User Management section
+                initCsvUserAddition(); // Initialize the new CSV user addition
+            }
+
+            // --- Admin Form/Data Logic ---
+            function initAdminForms() {
+                const addBadgeForm = document.getElementById('addBadgeForm');
+                const addBadgeMessage = document.getElementById('addBadgeMessage');
+                const addTaskForm = document.getElementById('addTaskForm');
+                const addTaskMessage = document.getElementById('addTaskMessage');
+                const sendQuizForm = document.getElementById('sendQuizForm');
+                const sendQuizMessage = document.getElementById('sendQuizMessage');
+                const setLiveLinkForm = document.getElementById('setLiveLinkForm');
+                const setLiveLinkMessage = document.getElementById('setLiveLinkMessage');
+                const addUserForm = document.getElementById('addUserForm');
+                const addUserMessage = document.getElementById('addUserMessage');
+
+
+                // Add New User Form Submission
+                addUserForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearMessage(addUserMessage);
+
+                    const email = document.getElementById('newUserEmail').value;
+                    const password = document.getElementById('newUserPassword').value;
+                    // All fields are now required
+                    const displayName = document.getElementById('newUserName').value;
+                    const role = document.getElementById('newUserRole').value;
+                    const location = document.getElementById('newUserLocation').value;
+                    const language = document.getElementById('newUserLanguage').value;
+                    const phone = document.getElementById('newUserPhone').value;
+
+                    if (password.length < 6) {
+                        displayMessage(addUserMessage, 'Password must be at least 6 characters long.', 'error');
+                        return;
+                    }
+
+                    try {
+                        // 1. Create user in Firebase Authentication
+                        // NOTE: Directly creating users with initial password from client-side
+                        // and then sending email is not ideal for security/scalability.
+                        // For a production app, this should be handled by a Firebase Cloud Function
+                        // which creates the user via Admin SDK and sends a welcome email.
+                        const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+                        const user = userCredential.user;
+
+                        // 2. Create user document in Firestore
+                        await setDoc(doc(firebaseDb, "users", user.uid), {
+                            email: email,
+                            displayName: displayName,
+                            role: role,
+                            location: location,
+                            language: language,
+                            phone: phone,
+                            created_at: new Date(),
+                            // chaperone_id will be null for new protégés, set later
+                            // assigned_topics will be empty for new protégés, set later
+                        });
+
+                        displayMessage(addUserMessage, `User ${email} (${role}) added successfully! Initial password: ${password}. (Email simulation)`, 'success');
+                        addUserForm.reset();
+                        loadAllUsers(); // Refresh the user list
+                        // In a real app, you'd trigger a Cloud Function here to send a welcome email
+                        // with instructions to log in and change password.
+                        console.log(`(SIMULATED EMAIL) To: ${email}, Subject: Your L.A.M.P. Account, Body: Your email: ${email}, Your initial password: ${password}. Please log in and change your password.`);
+
+                    } catch (error) {
+                        let errorMessage = `Error adding user: ${error.message}`;
+                        if (error.code === 'auth/email-already-in-use') {
+                            errorMessage = 'The email address is already in use by another account.';
+                        } else if (error.code === 'auth/weak-password') {
+                            errorMessage = 'Password is too weak. Please choose a stronger password.';
+                        }
+                        displayMessage(addUserMessage, errorMessage, 'error');
+                        console.error("Error adding user:", error);
+                    }
+                });
+
+
+                // Add New Badge Form Submission
+                addBadgeForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearMessage(addBadgeMessage);
+                    const name = document.getElementById('badgeName').value;
+                    const icon_url = document.getElementById('badgeIconUrl').value;
+                    const description = document.getElementById('badgeDescription').value;
+
+                    try {
+                        await addDoc(collection(firebaseDb, "badges"), {
+                            name,
+                            icon_url,
+                            description,
+                            created_at: new Date()
+                        });
+                        displayMessage(addBadgeMessage, 'Badge added successfully!', 'success');
+                        addBadgeForm.reset();
+                    } catch (error) {
+                        displayMessage(addBadgeMessage, `Error adding badge: ${error.message}`, 'error');
+                        console.error("Error adding badge:", error);
+                    }
+                });
+
+                // Add New Global Task Form Submission
+                addTaskForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearMessage(addTaskMessage);
+                    const name = document.getElementById('taskName').value;
+                    const description = document.getElementById('taskDescription').value;
+                    const video_url = document.getElementById('videoUrl').value; // Now required
+                    const document_url = document.getElementById('documentUrl').value; // Now required
+                    const deadline = document.getElementById('taskDeadline').value ? new Date(document.getElementById('taskDeadline').value) : null;
+                    const topic = document.getElementById('taskTopic').value;
+
+                    try {
+                        await addDoc(collection(firebaseDb, "global_tasks"), {
+                            name,
+                            description,
+                            video_url,
+                            document_url,
+                            deadline,
+                            topic,
+                            enabled: true, // Default to enabled
+                            created_at: new Date()
+                        });
+                        displayMessage(addTaskMessage, 'Task added successfully!', 'success');
+                        addTaskForm.reset();
+                    } catch (error) {
+                        displayMessage(addTaskMessage, `Error adding task: ${error.message}`, 'error');
+                        console.error("Error adding task:", error);
+                    }
+                });
+
+                // Send Quiz Notification Form Submission
+                sendQuizForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearMessage(sendQuizMessage);
+                    const quizLink = document.getElementById('quizLink').value;
+                    const quizTopic = document.getElementById('quizTopic').value;
+
+                    try {
+                        // This would ideally trigger a Firebase Cloud Function for push notifications
+                        // For demonstration, we'll just record it or simulate success
+                        console.log(`Simulating sending quiz notification for topic '${quizTopic}' with link: ${quizLink}`);
+                        displayMessage(sendQuizMessage, 'Quiz notification simulated (Cloud Function would trigger here)!', 'success');
+                        sendQuizForm.reset();
+                        // In a real app, you might add a doc to a 'notifications_queue' collection
+                        // await addDoc(collection(firebaseDb, "notifications_queue"), {
+                        //     type: "quiz",
+                        //     link: quizLink,
+                        //     topic: quizTopic,
+                        //     timestamp: new Date(),
+                        //     status: "pending"
+                        // });
+                    } catch (error) {
+                        displayMessage(sendQuizMessage, `Error sending quiz notification: ${error.message}`, 'error');
+                        console.error("Error sending quiz notification:", error);
+                    }
+                });
+
+                // Set Daaji Live Link Form Submission
+                setLiveLinkForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearMessage(setLiveLinkMessage);
+                    const daajiLiveLink = document.getElementById('daajiLiveLink').value;
+
+                    try {
+                        await setDoc(doc(firebaseDb, "app_settings", "live_links"), {
+                            daaji_live_link: daajiLiveLink,
+                            last_updated: new Date()
+                        }, { merge: true }); // Use merge: true to create if not exists, or update if exists
+                        displayMessage(setLiveLinkMessage, 'Daaji Live Link set successfully!', 'success');
+                    } catch (error) {
+                        displayMessage(setLiveLinkMessage, `Error setting live link: ${error.message}`, 'error');
+                        console.error("Error setting live link:", error);
+                    }
+                });
+            }
+
+            // Load existing Daaji Live Link
+            async function loadDaajiLiveLink() {
+                const daajiLiveLinkInput = document.getElementById('daajiLiveLink');
+                if (!daajiLiveLinkInput) return;
+
+                try {
+                    const docSnap = await getDoc(doc(firebaseDb, "app_settings", "live_links"));
+                    if (docSnap.exists()) {
+                        daajiLiveLinkInput.value = docSnap.data().daaji_live_link || '';
+                        console.log("[loadDaajiLiveLink] Loaded Daaji Live Link:", daajiLiveLinkInput.value);
+                    } else {
+                        daajiLiveLinkInput.value = '';
+                        console.log("[loadDaajiLiveLink] No Daaji Live Link document found.");
+                    }
+                } catch (error) {
+                    console.error("[loadDaajiLiveLink] Error loading Daaji Live Link:", error);
+                    displayMessage(document.getElementById('setLiveLinkMessage'), 'Failed to load existing live link.', 'error');
+                }
+            }
+
+
+            // Load Global Tasks with real-time updates (now topic-based)
+            function loadGlobalTasks() {
+                const globalTasksList = document.getElementById('globalTasksList');
+                if (!globalTasksList) return;
+
+                unsubscribeSnapshots = unsubscribeSnapshots.filter(unsub => unsub.id !== 'globalTasksListener');
+
+                const q = query(collection(firebaseDb, "global_tasks"));
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    console.log("[loadGlobalTasks] Global tasks snapshot received.");
+                    let html = '';
+                    if (snapshot.empty) {
+                        html = '<p class="text-gray-500">No tasks available for assignment yet.</p>';
+                    } else {
+                        html += `<table class="admin-data-table">
+                            <thead>
+                                <tr>
+                                    <th>Task Name</th>
+                                    <th>Topic</th>
+                                    <th>Deadline</th>
+                                    <th>Video</th>
+                                    <th>Document</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                        snapshot.forEach((doc) => {
+                            const task = doc.data();
+                            const taskId = doc.id;
+                            const deadlineText = task.deadline ? new Date(task.deadline.seconds * 1000).toLocaleDateString() : 'N/A';
+                            const statusColor = task.enabled ? 'bg-green-600' : 'bg-red-500';
+                            const statusText = task.enabled ? 'Enabled' : 'Disabled';
+                            const actionText = task.enabled ? 'Disable' : 'Enable';
+                            const actionColor = task.enabled ? 'bg-red-500' : 'bg-green-600';
+
+                            // Display video and document URLs as links if they exist
+                            const videoLink = task.video_url ? `<a href="${task.video_url}" target="_blank" class="text-blue-600 hover:underline">Watch</a>` : 'N/A';
+                            const documentLink = task.document_url ? `<a href="${task.document_url}" target="_blank" class="text-blue-600 hover:underline">View</a>` : 'N/A';
+
+                            html += `
+                                <tr>
+                                    <td>${task.name}</td>
+                                    <td>${task.topic || 'N/A'}</td> <!-- Display topic -->
+                                    <td>${deadlineText}</td>
+                                    <td>${videoLink}</td>
+                                    <td>${documentLink}</td>
+                                    <td><span class="px-2 py-1 rounded-full text-xs text-white ${statusColor}">${statusText}</span></td>
+                                    <td>
+                                        <button class="app-button ${actionColor} toggle-task-status" data-id="${taskId}" data-enabled="${task.enabled}">
+                                            ${actionText}
+                                        </button>
+                                        <button class="app-button bg-gray-500 ml-2 delete-task" data-id="${taskId}">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        html += `</tbody></table>`;
+                    }
+                    globalTasksList.innerHTML = html;
+
+                    globalTasksList.querySelectorAll('.toggle-task-status').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const taskId = e.target.dataset.id;
+                            const currentEnabled = e.target.dataset.enabled === 'true';
+                            try {
+                                await updateDoc(doc(firebaseDb, "global_tasks", taskId), {
+                                    enabled: !currentEnabled
+                                });
+                                console.log(`[loadGlobalTasks] Task ${taskId} status toggled to ${!currentEnabled}`);
+                            } catch (error) {
+                                console.error("[loadGlobalTasks] Error toggling task status:", error);
+                                displayMessage(document.getElementById('adminMessages'), 'Failed to update task status.', 'error');
+                            }
+                        });
+                    });
+
+                    globalTasksList.querySelectorAll('.delete-task').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const taskId = e.target.dataset.id;
+                            const confirmDelete = document.createElement('div');
+                            confirmDelete.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                            confirmDelete.innerHTML = `
+                                <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+                                    <p class="text-lg font-semibold mb-4">Are you sure you want to delete this task?</p>
+                                    <button id="confirmDeleteBtn" class="app-button bg-red-500 w-auto px-6 py-2 mr-2">Yes, Delete</button>
+                                    <button id="cancelDeleteBtn" class="app-button bg-gray-500 w-auto px-6 py-2">Cancel</button>
+                                </div>
+                            `;
+                            document.body.appendChild(confirmDelete);
+
+                            document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+                                try {
+                                    await deleteDoc(doc(firebaseDb, "global_tasks", taskId));
+                                    console.log(`[loadGlobalTasks] Task ${taskId} deleted.`);
+                                } catch (error) {
+                                    console.error("[loadGlobalTasks] Error deleting task:", error);
+                                    displayMessage(document.getElementById('adminMessages'), 'Failed to delete task.', 'error');
+                                } finally {
+                                    document.body.removeChild(confirmDelete);
+                                }
+                            });
+
+                            document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+                                document.body.removeChild(confirmDelete);
+                            });
+                        });
+                    });
+
+                }, (error) => {
+                    console.error("[loadGlobalTasks] Error listening to global tasks:", error);
+                    globalTasksList.innerHTML = `<p class="text-red-500">Error loading tasks: ${error.message}</p>`;
+                });
+                unsubscribe.id = 'globalTasksListener';
+                unsubscribeSnapshots.push(unsubscribe);
+            }
+
+            // --- Automatic Chaperone-Protégé Assignment Logic (No Location Input) ---
+            function initAutomaticAssignment() {
+                const autoAssignButton = document.getElementById('autoAssignButton');
+                const automaticAssignmentMessage = document.getElementById('automaticAssignmentMessage');
+
+                if (!autoAssignButton) return;
+
+                autoAssignButton.addEventListener('click', async () => {
+                    clearMessage(automaticAssignmentMessage);
+                    displayMessage(automaticAssignmentMessage, 'Running auto-assignment...', 'info'); // Provide immediate feedback
+
+                    try {
+                        // 1. Get all available chaperones
+                        const chaperonesQuery = query(
+                            collection(firebaseDb, "users"),
+                            where("role", "==", "chaperone")
+                        );
+                        const chaperonesSnapshot = await getDocs(chaperonesQuery);
+                        const allChaperones = chaperonesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                        if (allChaperones.length === 0) {
+                            displayMessage(automaticAssignmentMessage, `No chaperones found. Cannot perform assignment.`, 'error');
+                            return;
+                        }
+                        console.log(`Found ${allChaperones.length} chaperones.`);
+
+                        // Group chaperones by location and language for efficient lookups
+                        const chaperonesByLocationAndLanguage = new Map();
+                        allChaperones.forEach(chap => {
+                            const locationKey = (chap.location || 'N/A').toLowerCase();
+                            const languageKey = (chap.language || 'N/A').toLowerCase(); // New: Language key
+                            const combinedKey = `${locationKey}-${languageKey}`;
+
+                            if (!chaperonesByLocationAndLanguage.has(combinedKey)) {
+                                chaperonesByLocationAndLanguage.set(combinedKey, []);
+                            }
+                            chaperonesByLocationAndLanguage.get(combinedKey).push(chap);
+                        });
+
+                        // Keep track of the current index for round-robin within each group
+                        const assignmentIndexMap = new Map();
+                        chaperonesByLocationAndLanguage.forEach((_, key) => assignmentIndexMap.set(key, 0));
+
+                        // 2. Get all unassigned protégés
+                        const protegesQuery = query(
+                            collection(firebaseDb, "users"),
+                            where("role", "==", "protégé"),
+                            where("chaperone_id", "==", null)
+                        );
+                        const protegesSnapshot = await getDocs(protegesQuery);
+                        const unassignedProteges = protegesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                        if (unassignedProteges.length === 0) {
+                            displayMessage(automaticAssignmentMessage, `No unassigned protégés found.`, 'success');
+                            return;
+                        }
+                        console.log(`Found ${unassignedProteges.length} unassigned protégés.`);
+
+                        let assignedCount = 0;
+                        let skippedCount = 0;
+
+                        // Attempt assignment based on location and language match
+                        for (const protege of unassignedProteges) {
+                            const protegeLocationKey = (protege.location || 'N/A').toLowerCase();
+                            const protegeLanguageKey = (protege.language || 'N/A').toLowerCase(); // New: Protégé language
+                            const combinedProtegeKey = `${protegeLocationKey}-${protegeLanguageKey}`;
+
+                            const chaperonesInGroup = chaperonesByLocationAndLanguage.get(combinedProtegeKey);
+
+                            if (chaperonesInGroup && chaperonesInGroup.length > 0) {
+                                const currentIdx = assignmentIndexMap.get(combinedProtegeKey);
+                                const assignedChaperone = chaperonesInGroup[currentIdx];
+
+                                const protegeRef = doc(firebaseDb, "users", protege.id);
+                                await updateDoc(protegeRef, {
+                                    chaperone_id: assignedChaperone.id,
+                                    assigned_at: new Date()
+                                });
+                                assignedCount++;
+                                assignmentIndexMap.set(combinedProtegeKey, (currentIdx + 1) % chaperonesInGroup.length);
+                                console.log(`Assigned protégé ${protege.displayName || protege.email} (loc: ${protege.location}, lang: ${protege.language}) to chaperone ${assignedChaperone.displayName || assignedChaperone.email} (loc: ${assignedChaperone.location}, lang: ${assignedChaperone.language}).`);
+                            } else {
+                                skippedCount++;
+                                console.warn(`Skipped protégé ${protege.displayName || protege.email} (loc: ${protege.location}, lang: ${protege.language}): No matching chaperone found in their location and language.`);
+                            }
+                        }
+
+                        let finalMessage = `Auto-assignment complete. Total assigned: ${assignedCount}.`;
+                        if (skippedCount > 0) {
+                            finalMessage += ` ${skippedCount} protégés remain unassigned (no matching chaperone found by location and language).`;
+                        }
+                        displayMessage(automaticAssignmentMessage, finalMessage, 'success');
+                        loadAssignmentsOverview(); // Refresh the overview to show new assignments
+
+                    } catch (error) {
+                        displayMessage(automaticAssignmentMessage, `Error during automatic assignment: ${error.message}`, 'error');
+                        console.error("Error during automatic assignment:", error);
+                    }
+                });
+            }
+
+            // --- Manual Chaperone Assignment Logic ---
+            async function initManualAssignmentForm() {
+                const manualAssignmentForm = document.getElementById('manualAssignmentForm');
+                const selectProtege = document.getElementById('selectProtege');
+                const selectChaperone = document.getElementById('selectChaperone');
+                const manualAssignmentMessage = document.getElementById('manualAssignmentMessage');
+
+                if (!manualAssignmentForm) return;
+
+                // Load protégés and chaperones for dropdowns
+                const loadUsersForManualAssignment = async () => {
+                    selectProtege.innerHTML = '<option value="">Loading protégés...</option>';
+                    selectChaperone.innerHTML = '<option value="">Loading chaperones...</option>';
+
+                    try {
+                        const protegesSnapshot = await getDocs(query(collection(firebaseDb, "users"), where("role", "==", "protégé")));
+                        const chaperonesSnapshot = await getDocs(query(collection(firebaseDb, "users"), where("role", "==", "chaperone")));
+
+                        if (protegesSnapshot.empty) {
+                            selectProtege.innerHTML = '<option value="">No protégés found</option>';
+                            selectProtege.disabled = true;
+                        } else {
+                            selectProtege.innerHTML = '<option value="">Select a Protégé</option>';
+                            protegesSnapshot.forEach(doc => {
+                                const protege = doc.data();
+                                selectProtege.innerHTML += `<option value="${doc.id}">${protege.displayName || protege.email} (Loc: ${protege.location || 'N/A'}, Lang: ${protege.language || 'N/A'})</option>`;
+                            });
+                            selectProtege.disabled = false;
+                        }
+
+                        if (chaperonesSnapshot.empty) {
+                            selectChaperone.innerHTML = '<option value="">No chaperones found</option>';
+                            selectChaperone.disabled = true;
+                        } else {
+                            selectChaperone.innerHTML = '<option value="">Select a Chaperone</option>';
+                            chaperonesSnapshot.forEach(doc => {
+                                const chaperone = doc.data();
+                                selectChaperone.innerHTML += `<option value="${doc.id}">${chaperone.displayName || chaperone.email} (Loc: ${chaperone.location || 'N/A'}, Lang: ${chaperone.language || 'N/A'})</option>`;
+                            });
+                            selectChaperone.disabled = false;
+                        }
+                    } catch (error) {
+                        console.error("Error loading users for manual assignment:", error);
+                        selectProtege.innerHTML = '<option value="">Error loading protégés</option>';
+                        selectProtege.disabled = true;
+                        selectChaperone.innerHTML = '<option value="">Error loading chaperones</option>';
+                        selectChaperone.disabled = true;
+                        displayMessage(manualAssignmentMessage, 'Failed to load users for manual assignment.', 'error');
+                    }
+                };
+
+                // Load users on initial render of the admin dashboard
+                loadUsersForManualAssignment();
+
+                manualAssignmentForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearMessage(manualAssignmentMessage);
+
+                    const selectedProtegeId = selectProtege.value;
+                    const selectedChaperoneId = selectChaperone.value;
+
+                    if (!selectedProtegeId || !selectedChaperoneId) {
+                        displayMessage(manualAssignmentMessage, 'Please select both a protégé and a chaperone.', 'error');
+                        return;
+                    }
+
+                    try {
+                        const protegeRef = doc(firebaseDb, "users", selectedProtegeId);
+                        await updateDoc(protegeRef, {
+                            chaperone_id: selectedChaperoneId,
+                            assigned_at: new Date() // Update assignment timestamp
+                        });
+                        displayMessage(manualAssignmentMessage, 'Protégé assigned/reassigned successfully!', 'success');
+                        manualAssignmentForm.reset();
+                        loadUsersForManualAssignment(); // Reload dropdowns to reflect changes
+                        loadAssignmentsOverview(); // Refresh the overview
+                    } catch (error) {
+                        displayMessage(manualAssignmentMessage, `Error assigning protégé: ${error.message}`, 'error');
+                        console.error("Error manual assignment:", error);
+                    }
+                });
+            }
+
+            // --- CSV Assignment Logic ---
+            function initCsvAssignment() {
+                const csvFileInput = document.getElementById('csvFileInput');
+                const uploadCsvButton = document.getElementById('uploadCsvButton');
+                const csvUploadMessage = document.getElementById('csvUploadMessage');
+
+                if (!csvFileInput || !uploadCsvButton) return;
+
+                uploadCsvButton.addEventListener('click', () => {
+                    clearMessage(csvUploadMessage);
+                    const file = csvFileInput.files[0];
+
+                    if (!file) {
+                        displayMessage(csvUploadMessage, 'Please select a CSV file to upload.', 'error');
+                        return;
+                    }
+
+                    if (file.type !== 'text/csv') {
+                        displayMessage(csvUploadMessage, 'Invalid file type. Please upload a CSV file.', 'error');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const text = e.target.result;
+                        await processCsvData(text);
+                    };
+                    reader.onerror = () => {
+                        displayMessage(csvUploadMessage, 'Error reading file.', 'error');
+                        console.error("FileReader error:", reader.error);
+                    };
+                    reader.readAsText(file);
+                });
+
+                async function processCsvData(csvText) {
+                    const lines = csvText.split('\n').filter(line => line.trim() !== '');
+                    if (lines.length === 0) {
+                        displayMessage(csvUploadMessage, 'CSV file is empty.', 'error');
+                        return;
+                    }
+
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    const protegeIdIndex = headers.indexOf('protegeId');
+                    const chaperoneIdIndex = headers.indexOf('chaperoneId');
+
+                    if (protegeIdIndex === -1 || chaperoneIdIndex === -1) {
+                        displayMessage(csvUploadMessage, 'CSV must contain "protegeId" and "chaperoneId" columns.', 'error');
+                        return;
+                    }
+
+                    let successCount = 0;
+                    let failCount = 0;
+                    const errorDetails = [];
+
+                    // Fetch all users to validate IDs and get display names
+                    const allUsersSnapshot = await getDocs(collection(firebaseDb, "users"));
+                    const allUsersMap = new Map();
+                    allUsersSnapshot.forEach(doc => {
+                        allUsersMap.set(doc.id, doc.data());
+                    });
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = lines[i].split(',').map(v => v.trim());
+                        if (values.length <= Math.max(protegeIdIndex, chaperoneIdIndex)) {
+                            errorDetails.push(`Row ${i + 1}: Malformed row, skipping.`);
+                            failCount++;
+                            continue;
+                        }
+
+                        const protegeId = values[protegeIdIndex];
+                        const chaperoneId = values[chaperoneIdIndex];
+
+                        const protegeData = allUsersMap.get(protegeId);
+                        const chaperoneData = allUsersMap.get(chaperoneId);
+
+                        if (!protegeData || protegeData.role !== 'protégé') {
+                            errorDetails.push(`Row ${i + 1} (Protege ID: ${protegeId}): Protégé not found or not a protégé role.`);
+                            failCount++;
+                            continue;
+                        }
+                        if (!chaperoneData || chaperoneData.role !== 'chaperone') {
+                            errorDetails.push(`Row ${i + 1} (Chaperone ID: ${chaperoneId}): Chaperone not found or not a chaperone role.`);
+                            failCount++;
+                            continue;
+                        }
+
+                        try {
+                            const protegeRef = doc(firebaseDb, "users", protegeId);
+                            await updateDoc(protegeRef, {
+                                chaperone_id: chaperoneId,
+                                assigned_at: new Date()
+                            });
+                            successCount++;
+                            console.log(`CSV: Assigned protégé ${protegeId} to chaperone ${chaperoneId}`);
+                        } catch (error) {
+                            errorDetails.push(`Row ${i + 1} (Protege ID: ${protegeId}, Chaperone ID: ${chaperoneId}): Assignment failed - ${error.message}`);
+                            failCount++;
+                            console.error(`CSV Assignment Error for row ${i + 1}:`, error);
+                        }
+                    }
+
+                    let message = `CSV processing complete. Successfully assigned: ${successCount}. Failed: ${failCount}.`;
+                    if (failCount > 0) {
+                        message += ` See console for details on failures.`;
+                        displayMessage(csvUploadMessage, message, 'error');
+                        errorDetails.forEach(detail => console.error(detail));
+                    } else {
+                        displayMessage(csvUploadMessage, message, 'success');
+                    }
+                    csvFileInput.value = ''; // Clear file input
+                    loadAssignmentsOverview(); // Refresh the overview
+                    // Also refresh manual assignment dropdowns as assignments have changed
+                    document.getElementById('manualAssignmentForm') && initManualAssignmentForm();
+                }
+            }
+
+            // --- CSV User Addition Logic ---
+            function initCsvUserAddition() {
+                const csvUserFileInput = document.getElementById('csvUserFileInput');
+                const uploadCsvUserButton = document.getElementById('uploadCsvUserButton');
+                const csvUserUploadMessage = document.getElementById('csvUserUploadMessage');
+
+                if (!csvUserFileInput || !uploadCsvUserButton) return;
+
+                uploadCsvUserButton.addEventListener('click', () => {
+                    clearMessage(csvUserUploadMessage);
+                    const file = csvUserFileInput.files[0];
+
+                    if (!file) {
+                        displayMessage(csvUserUploadMessage, 'Please select a CSV file to upload.', 'error');
+                        return;
+                    }
+
+                    if (file.type !== 'text/csv') {
+                        displayMessage(csvUserUploadMessage, 'Invalid file type. Please upload a CSV file.', 'error');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const text = e.target.result;
+                        await processCsvUserData(text);
+                    };
+                    reader.onerror = () => {
+                        displayMessage(csvUserUploadMessage, 'Error reading file.', 'error');
+                        console.error("FileReader error:", reader.error);
+                    };
+                    reader.readAsText(file);
+                });
+
+                async function processCsvUserData(csvText) {
+                    const lines = csvText.split('\n').filter(line => line.trim() !== '');
+                    if (lines.length === 0) {
+                        displayMessage(csvUserUploadMessage, 'CSV file is empty.', 'error');
+                        return;
+                    }
+
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    const requiredHeaders = ['email', 'password', 'displayName', 'role', 'location', 'language', 'phone']; // All fields are now required
+                    const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+
+                    if (missingHeaders.length > 0) {
+                        displayMessage(csvUserUploadMessage, `CSV must contain the following columns: ${missingHeaders.join(', ')}.`, 'error');
+                        return;
+                    }
+
+                    let successCount = 0;
+                    let failCount = 0;
+                    const errorDetails = [];
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = lines[i].split(',').map(v => v.trim());
+                        const userData = {};
+                        headers.forEach((header, index) => {
+                            userData[header] = values[index]; // No longer assign null if value is empty, as all are required
+                        });
+
+                        const email = userData.email;
+                        const password = userData.password;
+                        const displayName = userData.displayName;
+                        const role = userData.role;
+                        const location = userData.location;
+                        const language = userData.language;
+                        const phone = userData.phone;
+
+                        // Basic validation for required fields from CSV
+                        if (!email || !password || !displayName || !role || !location || !language || !phone) {
+                            errorDetails.push(`Row ${i + 1}: Missing one or more required fields. Skipping.`);
+                            failCount++;
+                            continue;
+                        }
+                        if (password.length < 6) {
+                            errorDetails.push(`Row ${i + 1} (Email: ${email}): Password is too short (min 6 characters). Skipping.`);
+                            failCount++;
+                            continue;
+                        }
+
+                        try {
+                            // Create user in Firebase Authentication
+                            const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+                            const user = userCredential.user;
+
+                            // Create user document in Firestore
+                            await setDoc(doc(firebaseDb, "users", user.uid), {
+                                email: email,
+                                displayName: displayName,
+                                role: role,
+                                location: location,
+                                language: language,
+                                phone: phone,
+                                created_at: new Date(),
+                            });
+                            successCount++;
+                            console.log(`CSV User Added: ${email} (${role}). Initial password: ${password}`);
+                            // Simulate email sending (requires Firebase Cloud Function in production)
+                            console.log(`(SIMULATED EMAIL) To: ${email}, Subject: Your L.A.M.P. Account, Body: Your email: ${email}, Your initial password: ${password}. Please log in and change your password.`);
+
+                        } catch (error) {
+                            let errorMessage = error.message;
+                            if (error.code === 'auth/email-already-in-use') {
+                                errorMessage = 'Email already in use.';
+                            } else if (error.code === 'auth/weak-password') {
+                                errorMessage = 'Weak password.';
+                            }
+                            errorDetails.push(`Row ${i + 1} (Email: ${email}): Failed to add user - ${errorMessage}`);
+                            failCount++;
+                            console.error(`CSV User Add Error for row ${i + 1}:`, error);
+                        }
+                    }
+
+                    let message = `CSV user processing complete. Successfully added: ${successCount}. Failed: ${failCount}.`;
+                    if (failCount > 0) {
+                        message += ` See console for details on failures.`;
+                        displayMessage(csvUserUploadMessage, message, 'error');
+                        errorDetails.forEach(detail => console.error(detail));
+                    } else {
+                        displayMessage(csvUserUploadMessage, message, 'success');
+                    }
+                    csvUserFileInput.value = ''; // Clear file input
+                    loadAllUsers(); // Refresh the user list
+                    document.getElementById('manualAssignmentForm') && initManualAssignmentForm(); // Refresh assignment dropdowns
+                }
+            }
+
+
+            // --- User Management: Load All Users ---
+            function loadAllUsers() {
+                const allUsersList = document.getElementById('allUsersList');
+                if (!allUsersList) return;
+
+                unsubscribeSnapshots = unsubscribeSnapshots.filter(unsub => unsub.id !== 'allUsersListener');
+
+                const q = query(collection(firebaseDb, "users"));
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    console.log("[loadAllUsers] All users snapshot received.");
+                    let html = '';
+                    if (snapshot.empty) {
+                        html = '<p class="text-gray-500">No users found.</p>';
+                    } else {
+                        html += `<table class="admin-data-table">
+                            <thead>
+                                <tr>
+                                    <th>Display Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Location</th>
+                                    <th>Language</th>
+                                    <th>Phone</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                        snapshot.forEach((doc) => {
+                            const user = doc.data();
+                            const userId = doc.id;
+                            html += `
+                                <tr>
+                                    <td>${user.displayName || 'N/A'}</td>
+                                    <td>${user.email || 'N/A'}</td>
+                                    <td>${user.role || 'N/A'}</td>
+                                    <td>${user.location || 'N/A'}</td>
+                                    <td>${user.language || 'N/A'}</td>
+                                    <td>${user.phone || 'N/A'}</td>
+                                    <td>
+                                        <button class="app-button bg-blue-500 edit-user-btn" data-id="${userId}">Edit</button>
+                                        <button class="app-button bg-red-500 ml-2 delete-user-btn" data-id="${userId}">Delete</button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        html += `</tbody></table>`;
+                    }
+                    allUsersList.innerHTML = html;
+
+                    // Add event listeners for edit and delete buttons
+                    allUsersList.querySelectorAll('.edit-user-btn').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            const userId = e.target.dataset.id;
+                            showEditUserModal(userId);
+                        });
+                    });
+
+                    allUsersList.querySelectorAll('.delete-user-btn').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            const userId = e.target.dataset.id;
+                            showDeleteUserConfirmation(userId);
+                        });
+                    });
+
+                }, (error) => {
+                    console.error("[loadAllUsers] Error listening to all users:", error);
+                    allUsersList.innerHTML = `<p class="text-red-500">Error loading users: ${error.message}</p>`;
+                });
+                unsubscribe.id = 'allUsersListener';
+                unsubscribeSnapshots.push(unsubscribe);
+            }
+
+            // --- User Management: Edit User Modal ---
+            async function showEditUserModal(userId) {
+                const userDocSnap = await getDoc(doc(firebaseDb, "users", userId));
+                if (!userDocSnap.exists()) {
+                    displayMessage(document.getElementById('adminMessages'), 'User not found for editing.', 'error');
+                    return;
+                }
+                const userData = userDocSnap.data();
+
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <button class="modal-close-button">&times;</button>
+                        <h3 class="text-xl font-semibold text-accent-teal mb-4">Edit User: ${userData.displayName || userData.email}</h3>
+                        <form id="editUserForm" class="flex flex-col gap-4">
+                            <div class="form-group">
+                                <label for="editUserDisplayName">Display Name:</label>
+                                <input type="text" id="editUserDisplayName" value="${userData.displayName || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editUserRole">Role:</label>
+                                <select id="editUserRole" required>
+                                    <option value="admin" ${userData.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                    <option value="chaperone" ${userData.role === 'chaperone' ? 'selected' : ''}>Chaperone</option>
+                                    <option value="protégé" ${userData.role === 'protégé' ? 'selected' : ''}>Protégé</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="editUserLocation">Location:</label>
+                                <input type="text" id="editUserLocation" value="${userData.location || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editUserLanguage">Language:</label>
+                                <input type="text" id="editUserLanguage" value="${userData.language || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editUserPhone">Phone:</label>
+                                <input type="tel" id="editUserPhone" value="${userData.phone || ''}" required>
+                            </div>
+                            <div class="flex justify-end gap-2 mt-4">
+                                <button type="submit" class="app-button bg-accent-teal w-auto px-6 py-2">Save Changes</button>
+                                <button type="button" id="cancelEditUser" class="app-button bg-gray-500 w-auto px-6 py-2">Cancel</button>
+                            </div>
+                            <p id="editUserMessage" class="hidden"></p>
+                        </form>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                const closeModalBtn = modal.querySelector('.modal-close-button');
+                const cancelEditUserBtn = modal.querySelector('#cancelEditUser');
+                const editUserForm = modal.querySelector('#editUserForm');
+                const editUserMessage = modal.querySelector('#editUserMessage');
+
+                closeModalBtn.addEventListener('click', () => modal.remove());
+                cancelEditUserBtn.addEventListener('click', () => modal.remove());
+
+                editUserForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearMessage(editUserMessage);
+
+                    const updatedDisplayName = modal.querySelector('#editUserDisplayName').value; // Now required
+                    const updatedRole = modal.querySelector('#editUserRole').value;
+                    const updatedLocation = modal.querySelector('#editUserLocation').value; // Now required
+                    const updatedLanguage = modal.querySelector('#editUserLanguage').value; // Now required
+                    const updatedPhone = modal.querySelector('#editUserPhone').value; // Now required
+
+                    try {
+                        await updateDoc(doc(firebaseDb, "users", userId), {
+                            displayName: updatedDisplayName,
+                            role: updatedRole,
+                            location: updatedLocation,
+                            language: updatedLanguage,
+                            phone: updatedPhone
+                        });
+                        displayMessage(editUserMessage, 'User updated successfully!', 'success');
+                        setTimeout(() => modal.remove(), 1500);
+                        loadAllUsers(); // Refresh the user list
+                        loadAssignmentsOverview(); // Refresh assignments if roles changed
+                    } catch (error) {
+                        displayMessage(editUserMessage, `Error updating user: ${error.message}`, 'error');
+                        console.error("Error updating user:", error);
+                    }
+                });
+            }
+
+            // --- User Management: Delete User Confirmation ---
+            function showDeleteUserConfirmation(userId) {
+                const confirmDelete = document.createElement('div');
+                confirmDelete.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                confirmDelete.innerHTML = `
+                    <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+                        <p class="text-lg font-semibold mb-4">Are you sure you want to delete this user?</p>
+                        <p class="text-sm text-red-600 mb-4">This action cannot be undone and will delete the user's profile and associated data.</p>
+                        <button id="confirmDeleteUserBtn" class="app-button bg-red-500 w-auto px-6 py-2 mr-2">Yes, Delete</button>
+                        <button id="cancelDeleteUserBtn" class="app-button bg-gray-500 w-auto px-6 py-2">Cancel</button>
+                    </div>
+                `;
+                document.body.appendChild(confirmDelete);
+
+                document.getElementById('confirmDeleteUserBtn').addEventListener('click', async () => {
+                    try {
+                        // NOTE: Deleting a user from Firebase Authentication requires Firebase Admin SDK
+                        // which runs on a backend (e.g., Firebase Cloud Function).
+                        // This client-side code will only delete the Firestore document.
+                        // For a complete deletion, you'd need a Cloud Function triggered by this action
+                        // or a separate admin tool.
+                        await deleteDoc(doc(firebaseDb, "users", userId));
+                        displayMessage(document.getElementById('adminMessages'), 'User profile deleted successfully. (Firebase Auth user deletion requires backend function).', 'success');
+                        console.log(`User profile ${userId} deleted from Firestore.`);
+                        loadAllUsers(); // Refresh the user list
+                        loadAssignmentsOverview(); // Refresh assignments
+                    } catch (error) {
+                        displayMessage(document.getElementById('adminMessages'), `Error deleting user: ${error.message}`, 'error');
+                        console.error("Error deleting user:", error);
+                    } finally {
+                        document.body.removeChild(confirmDelete);
+                    }
+                });
+
+                document.getElementById('cancelDeleteUserBtn').addEventListener('click', () => {
+                    document.body.removeChild(confirmDelete);
+                });
+            }
+
+
+            // Load Chaperone-Protégé Assignments Overview with detailed task progress
+            function loadAssignmentsOverview() {
+                const assignmentsOverviewContainer = document.getElementById('assignmentsOverviewContainer');
+                if (!assignmentsOverviewContainer) return;
+
+                unsubscribeSnapshots = unsubscribeSnapshots.filter(unsub => unsub.id !== 'assignmentsListener');
+
+                const q = query(collection(firebaseDb, "users"), where("role", "==", "chaperone"));
+                const unsubscribe = onSnapshot(q, async (chaperoneSnapshot) => {
+                    console.log("[loadAssignmentsOverview] Chaperone snapshot received.");
+                    let html = '';
+                    if (chaperoneSnapshot.empty) {
+                        html = '<p class="text-gray-500">No chaperones found.</p>';
+                    } else {
+                        for (const chaperoneDoc of chaperoneSnapshot.docs) {
+                            const chaperone = chaperoneDoc.data();
+                            const chaperoneId = chaperoneDoc.id;
+
+                            html += `
+                                <div class="mb-6 pb-4 border-b border-gray-200">
+                                    <h3 class="font-semibold text-lg text-teal-600">${chaperone.displayName || 'Unnamed Chaperone'} (ID: ${chaperoneId})</h3>
+                                    <p class="text-sm text-gray-600">Email: ${chaperone.email || 'N/A'}, Phone: ${chaperone.phone || 'N/A'}, Location: ${chaperone.location || 'N/A'}, Language: ${chaperone.language || 'N/A'}</p>
+                                    <p class="font-medium mt-2 text-gray-700">Assigned Protégés:</p>
+                                    <div id="proteges-list-detail-${chaperoneId}">
+                                        <p class="text-gray-500">Loading protégés...</p>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                    assignmentsOverviewContainer.innerHTML = html;
+
+                    // Now, for each chaperone, load their assigned protégés and their tasks
+                    for (const chaperoneDoc of chaperoneSnapshot.docs) {
+                        const chaperoneId = chaperoneDoc.id;
+                        const protegesListDetailElem = document.getElementById(`proteges-list-detail-${chaperoneId}`);
+                        
+                        // Cleanup previous listener for this chaperone's protégés
+                        unsubscribeSnapshots = unsubscribeSnapshots.filter(unsub => unsub.id !== `protegesTasksListener-${chaperoneId}`);
+
+                        const protegesQuery = query(collection(firebaseDb, "users"), where("chaperone_id", "==", chaperoneId));
+                        console.log(`[loadAssignmentsOverview] Setting up onSnapshot for protégé of chaperone ${chaperoneId}. Query:`, protegesQuery);
+                        const protegesUnsubscribe = onSnapshot(protegesQuery, async (protegesSnapshot) => {
+                            console.log(`[loadAssignmentsOverview] Protégés snapshot for chaperone ${chaperoneId} received.`);
+                            let protegesHtml = '';
+                            if (protegesSnapshot.empty) {
+                                protegesHtml = '<p class="text-gray-500 ml-4">No protégés assigned to this chaperone.</p>';
+                            } else {
+                                for (const protegeDoc of protegesSnapshot.docs) {
+                                    const protege = protegeDoc.data();
+                                    const protegeId = protegeDoc.id;
+                                    const topics = protege.assigned_topics ? protege.assigned_topics.join(', ') : 'N/A';
+
+                                    protegesHtml += `
+                                        <div class="bg-gray-100 p-4 rounded-lg mb-4 ml-4">
+                                            <h4 class="font-semibold text-md text-primary cursor-pointer hover:underline view-protege-details" data-protege-id="${protegeId}">
+                                                ${protege.displayName || 'Unnamed Protégé'} (ID: ${protegeId})
+                                            </h4>
+                                            <p class="text-sm text-gray-600">Email: ${protege.email || 'N/A'}, Topics: ${topics}, Location: ${protege.location || 'N/A'}, Language: ${protege.language || 'N/A'}</p>
+                                            <button class="app-button bg-accent-teal mt-4 assign-task-to-protege" data-protege-id="${protegeId}" data-protege-name="${protege.displayName || 'Unnamed Protégé'}">Assign New Task</button>
+                                        </div>
+                                    `;
+                                }
+                            }
+                            if (protegesListDetailElem) protegesListDetailElem.innerHTML = protegesHtml;
+
+                            // Add event listeners for "View Details" and "Assign New Task" buttons
+                            protegesListDetailElem.querySelectorAll('.view-protege-details').forEach(button => {
+                                button.addEventListener('click', (e) => {
+                                    const targetProtegeId = e.target.dataset.protegeId;
+                                    showProtegeDetailsModal(targetProtegeId);
+                                });
+                            });
+
+                            protegesListDetailElem.querySelectorAll('.assign-task-to-protege').forEach(button => {
+                                button.addEventListener('click', (e) => {
+                                    const targetProtegeId = e.target.dataset.protegeId;
+                                    const targetProtegeName = e.target.dataset.protegeName;
+                                    showAssignTaskModal(targetProtegeId, targetProtegeName);
+                                });
+                            });
+
+                        }, (error) => {
+                            console.error(`[loadAssignmentsOverview] Error listening to protégés for chaperone ${chaperoneId}:`, error);
+                            if (protegesListDetailElem) protegesListDetailElem.innerHTML = `<p class="text-red-500">Error loading protégés.</p>`;
+                        });
+                        protegesUnsubscribe.id = `protegesTasksListener-${chaperoneId}-parent`; // Parent listener for protégés of a chaperone
+                        unsubscribeSnapshots.push(protegesUnsubscribe);
+                    }
+
+                }, (error) => {
+                    console.error("[loadAssignmentsOverview] Error listening to chaperones:", error);
+                    assignmentsOverviewContainer.innerHTML = `<p class="text-red-500">Error loading assignments: ${error.message}</p>`;
+                });
+                unsubscribe.id = 'assignmentsListener';
+                unsubscribeSnapshots.push(unsubscribe);
+            }
+
+            // Function to show modal for assigning task to a specific protégé
+            async function showAssignTaskModal(protegeId, protegeName) {
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <button class="modal-close-button">&times;</button>
+                        <h3 class="text-xl font-semibold text-accent-teal mb-4">Assign Task to ${protegeName}</h3>
+                        <form id="assignTaskToProtegeForm" class="flex flex-col gap-4">
+                            <div class="form-group">
+                                <label for="assignGlobalTask">Select Task:</label>
+                                <select id="assignGlobalTask" required>
+                                    <option value="">Loading tasks...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="assignDueDate">Due Date:</label>
+                                <input type="date" id="assignDueDate" required>
+                            </div>
+                            <div class="flex justify-end gap-2 mt-4">
+                                <button type="submit" class="app-button bg-accent-teal w-auto px-6 py-2">Assign Task</button>
+                                <button type="button" id="cancelAssignTask" class="app-button bg-gray-500 w-auto px-6 py-2">Cancel</button>
+                            </div>
+                            <p id="assignTaskModalMessage" class="hidden"></p>
+                        </form>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                const assignGlobalTaskSelect = modal.querySelector('#assignGlobalTask');
+                const assignTaskModalMessage = modal.querySelector('#assignTaskModalMessage');
+                const closeModalBtn = modal.querySelector('.modal-close-button');
+                const cancelAssignTaskBtn = modal.querySelector('#cancelAssignTask');
+
+                closeModalBtn.addEventListener('click', () => modal.remove());
+                cancelAssignTaskBtn.addEventListener('click', () => modal.remove());
+
+                // Populate global tasks dropdown
+                try {
+                    const globalTasksSnapshot = await getDocs(query(collection(firebaseDb, "global_tasks"), where("enabled", "==", true)));
+                    if (globalTasksSnapshot.empty) {
+                        assignGlobalTaskSelect.innerHTML = '<option value="">No tasks available</option>';
+                        assignGlobalTaskSelect.disabled = true;
+                    } else {
+                        assignGlobalTaskSelect.innerHTML = '<option value="">Select a task</option>';
+                        globalTasksSnapshot.forEach(doc => {
+                            const task = doc.data();
+                            assignGlobalTaskSelect.innerHTML += `<option value="${doc.id}">${task.name} (Topic: ${task.topic || 'N/A'})</option>`;
+                        });
+                        assignGlobalTaskSelect.disabled = false;
+                    }
+                } catch (error) {
+                    console.error("Error loading global tasks for assignment modal:", error);
+                    assignGlobalTaskSelect.innerHTML = '<option value="">Error loading tasks</option>';
+                    assignGlobalTaskSelect.disabled = true;
+                }
+
+                // Handle form submission
+                modal.querySelector('#assignTaskToProtegeForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearMessage(assignTaskModalMessage);
+
+                    const selectedTaskId = assignGlobalTaskSelect.value;
+                    const dueDate = modal.querySelector('#assignDueDate').value ? new Date(modal.querySelector('#assignDueDate').value) : null;
+
+                    if (!selectedTaskId) {
+                        displayMessage(assignTaskModalMessage, 'Please select a task.', 'error');
+                        return;
+                    }
+
+                    try {
+                        await addDoc(collection(firebaseDb, "user_tasks"), {
+                            user_ref: doc(firebaseDb, "users", protegeId),
+                            global_task_ref: doc(firebaseDb, "global_tasks", selectedTaskId),
+                            assigned_by_ref: doc(firebaseDb, "users", currentUser.uid), // Current admin/chaperone
+                            completion_status: false,
+                            assigned_at: new Date(),
+                            due_date: dueDate
+                        });
+                        displayMessage(assignTaskModalMessage, 'Task assigned successfully!', 'success');
+                        setTimeout(() => modal.remove(), 1500); // Close modal after success
+                    } catch (error) {
+                        displayMessage(assignTaskModalMessage, `Error assigning task: ${error.message}`, 'error');
+                        console.error("Error assigning task:", error);
+                    }
+                });
+            }
+
+            // New: Function to show protégé details modal
+            async function showProtegeDetailsModal(protegeId) {
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <button class="modal-close-button">&times;</button>
+                        <h3 class="text-xl font-semibold text-accent-teal mb-4">Protégé Details</h3>
+                        <div id="protegeDetailsContent">
+                            <p class="text-gray-500">Loading protégé details...</p>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                const closeModalBtn = modal.querySelector('.modal-close-button');
+                closeModalBtn.addEventListener('click', () => modal.remove());
+
+                const protegeDetailsContent = modal.querySelector('#protegeDetailsContent');
+
+                try {
+                    // Fetch protégé details
+                    const protegeDocRef = doc(firebaseDb, "users", protegeId);
+                    const protegeDocSnap = await getDoc(protegeDocRef);
+
+                    if (!protegeDocSnap.exists()) {
+                        protegeDetailsContent.innerHTML = `<p class="text-red-500">Protégé not found.</p>`;
+                        return;
+                    }
+
+                    const protegeData = protegeDocSnap.data();
+                    const topics = protegeData.assigned_topics ? protegeData.assigned_topics.join(', ') : 'N/A';
+
+                    let detailsHtml = `
+                        <div class="mb-6">
+                            <p class="text-lg font-semibold text-primary">Name: ${protegeData.displayName || 'N/A'}</p>
+                            <p class="text-md text-gray-700">Email: ${protegeData.email || 'N/A'}</p>
+                            <p class="text-md text-gray-700">Phone: ${protegeData.phone || 'N/A'}</p>
+                            <p class="text-md text-gray-700">Location: ${protegeData.location || 'N/A'}</p>
+                            <p class="text-md text-gray-700">Language: ${protegeData.language || 'N/A'}</p>
+                            <p class="text-md text-gray-700">Assigned Topics: ${topics}</p>
+                        </div>
+                        <h4 class="text-lg font-semibold text-accent-yellow mb-3">Assigned Tasks & Progress</h4>
+                        <div id="protegeTasksDetailsList">
+                            <p class="text-gray-500">Loading tasks...</p>
+                        </div>
+                    `;
+                    protegeDetailsContent.innerHTML = detailsHtml;
+
+                    const protegeTasksDetailsList = modal.querySelector('#protegeTasksDetailsList');
+
+                    // Fetch all global tasks to map task IDs to names/details
+                    const allGlobalTasksSnapshot = await getDocs(collection(firebaseDb, "global_tasks"));
+                    const allGlobalTasksMap = {};
+                    allGlobalTasksSnapshot.forEach(doc => allGlobalTasksMap[doc.id] = doc.data());
+
+                    // Fetch assigned tasks for this protégé
+                    const userTasksQuery = query(collection(firebaseDb, "user_tasks"), where("user_ref", "==", protegeDocRef));
+                    // Using onSnapshot for real-time updates within the modal if tasks change
+                    const userTasksUnsubscribe = onSnapshot(userTasksQuery, (userTasksSnapshot) => {
+                        let tasksHtml = '';
+                        if (userTasksSnapshot.empty) {
+                            tasksHtml = '<p class="text-gray-500">No tasks assigned to this protégé.</p>';
+                        } else {
+                            tasksHtml += `<table class="modal-table">
+                                <thead>
+                                    <tr>
+                                        <th>Task Name</th>
+                                        <th>Topic</th>
+                                        <th>Assigned Date</th>
+                                        <th>Due Date</th>
+                                        <th>Status</th>
+                                        <th>Completion Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                            userTasksSnapshot.forEach(userTaskDoc => {
+                                const userTask = userTaskDoc.data();
+                                const userTaskId = userTaskDoc.id; // Get the ID of the user_task document
+                                const globalTask = allGlobalTasksMap[userTask.global_task_ref.id] || { name: 'Unknown Task', topic: 'N/A' };
+                                
+                                const assignedDate = userTask.assigned_at ? new Date(userTask.assigned_at.seconds * 1000).toLocaleString() : 'N/A';
+                                const dueDate = userTask.due_date ? new Date(userTask.due_date.seconds * 1000).toLocaleDateString() : 'N/A';
+                                const completionDate = userTask.completion_date ? new Date(userTask.completion_date.seconds * 1000).toLocaleString() : 'N/A';
+                                
+                                const statusText = userTask.completion_status ? 'Completed' : 'Pending';
+                                const statusClass = userTask.completion_status ? 'text-green-600' : 'text-red-500';
+
+                                const actionButton = userTask.completion_status 
+                                    ? `<button class="app-button bg-red-500 toggle-completion-btn" data-user-task-id="${userTaskId}" data-status="false">Unmark</button>`
+                                    : `<button class="app-button bg-green-600 toggle-completion-btn" data-user-task-id="${userTaskId}" data-status="true">Mark Done</button>`;
+
+                                tasksHtml += `
+                                    <tr>
+                                        <td>${globalTask.name}</td>
+                                        <td>${globalTask.topic || 'N/A'}</td>
+                                        <td>${assignedDate}</td>
+                                        <td>${dueDate}</td>
+                                        <td><span class="${statusClass}">${statusText}</span></td>
+                                        <td>${completionDate}</td>
+                                        <td>${actionButton}</td>
+                                    </tr>
+                                `;
+                            });
+                            tasksHtml += `</tbody></table>`;
+                        }
+                        protegeTasksDetailsList.innerHTML = tasksHtml;
+
+                        // Add event listeners for toggle completion buttons
+                        protegeTasksDetailsList.querySelectorAll('.toggle-completion-btn').forEach(button => {
+                            button.addEventListener('click', async (e) => {
+                                const userTaskId = e.target.dataset.userTaskId;
+                                const newStatus = e.target.dataset.status === 'true'; // Convert string to boolean
+                                try {
+                                    await updateDoc(doc(firebaseDb, "user_tasks", userTaskId), {
+                                        completion_status: newStatus,
+                                        completion_date: newStatus ? new Date() : null
+                                    });
+                                    console.log(`Task ${userTaskId} completion status toggled to ${newStatus}`);
+                                } catch (error) {
+                                    console.error("Error toggling task completion:", error);
+                                    displayMessage(modal.querySelector('#protegeDetailsContent'), `Error updating task status: ${error.message}`, 'error');
+                                }
+                            });
+                        });
+
+                    }, (error) => {
+                        console.error("Error listening to protégé tasks:", error);
+                        protegeTasksDetailsList.innerHTML = `<p class="text-red-500">Error loading tasks: ${error.message}</p>`;
+                    });
+
+                    // Store the unsubscribe function to clean up when modal is closed
+                    modal.addEventListener('remove', () => {
+                        userTasksUnsubscribe();
+                        console.log("Unsubscribed from protégé tasks listener.");
+                    });
+
+                } catch (error) {
+                    console.error("Error loading protégé details or tasks:", error);
+                    protegeDetailsContent.innerHTML = `<p class="text-red-500">Error loading details: ${error.message}</p>`;
+                }
+            }
+
+
+            // --- Placeholder for Chaperone and Protégé Dashboards (UI only) ---
+            // These functions are now unused as only admin dashboard is rendered.
+            // Keeping them commented out for reference if needed in the future.
+            /*
+            function renderChaperoneDashboard() {
+                console.log("Rendering Chaperone Dashboard (Placeholder)...");
+                pageView.innerHTML = `
+                    <h1 class="text-3xl md:text-4xl font-bold text-accent-teal mb-4 md:mb-6">Chaperone Dashboard</h1>
+                    <p class="text-lg text-gray-600 mb-6">Welcome, Chaperone! Manage your protégés' tasks and progress.</p>
+                    <p class="text-sm text-gray-500 mb-6">Messages: No new messages.</p>
+
+                    <!-- Assign New Task Section -->
+                    <div class="section-card border-accent-teal">
+                        <h2 class="section-title text-accent-teal">Assign New Task</h2>
+                        <p class="text-gray-600">Form to assign a global task to a specific protégé.</p>
+                        <div class="form-group"><label>Select Protégé:</label><select><option>Protégé 1</option></select></div>
+                        <div class="form-group"><label>Select Task:</label><select><option>Task A</option></option></select></div>
+                        <div class="form-group"><label>Deadline:</label><input type="date"></div>
+                        <button class="app-button bg-accent-teal mt-4">Assign Task</button>
+                    </div>
+
+                    <!-- Assign Badges Section -->
+                    <div class="section-card border-purple-600">
+                        <h2 class="section-title text-purple-700">Assign Badges</h2>
+                        <p class="text-gray-600">Form to assign a badge to a specific protégé.</p>
+                        <div class="form-group"><label>Select Protégé:</label><select><option>Protégé 1</option></select></div>
+                        <div class="form-group"><label>Select Badge:</label><select><option>Badge X</option></select></div>
+                        <button class="app-button bg-purple-500 mt-4">Assign Badge</button>
+                    </div>
+
+                    <!-- Your Protégés' Task Progress Section -->
+                    <div class="section-card border-accent-yellow">
+                        <h2 class="section-title text-accent-yellow">Your Protégés' Task Progress</h2>
+                        <p class="text-gray-600">Overview of tasks assigned to your protégés and their completion status.</p>
+                        <div class="mt-4">
+                            <h3 class="font-semibold text-lg text-teal-600">Protégé Name (Topic)</h3>
+                            <p class="text-sm text-gray-600">Email: protégé@example.com</p>
+                            <p class="text-sm text-gray-600">Phone: 123-456-7890</p>
+                            <ul class="list-disc pl-5 mt-2">
+                                <li>Task 1: Learn Meditation (Status: Pending, Deadline: N/A) <button class="app-button bg-red-500 ml-2">Mark Done</button></li>
+                                <li>Task 2: Journaling (Status: Completed, Deadline: 2025-06-01) <button class="app-button bg-green-600 ml-2">Unmark</button></li>
+                            </ul>
+                            <p class="font-medium mt-2 text-gray-700">Assigned Badges:</p>
+                            <div class="flex-wrap-container">
+                                <span class="badge-chip"><img src="https://placehold.co/16x16/008080/FFFFFF?text=B1" alt="Badge">Badge One</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderProtegeDashboard() {
+                console.log("Rendering Protégé Dashboard (Placeholder)...");
+                pageView.innerHTML = `
+                    <h1 class="text-3xl md:text-4xl font-bold text-accent-teal mb-4 md:mb-6">Protégé Dashboard</h1>
+                    <p class="text-lg text-gray-600 mb-6">Welcome, Protégé! Your spiritual journey starts here.</p>
+
+                    <!-- Assigned Chaperone Section -->
+                    <div class="section-card border-teal-600">
+                        <h2 class="section-title text-teal-600">Your Assigned Chaperone</h2>
+                        <div class="flex items-center gap-4 mt-4">
+                            <span class="material-icons text-gray-500 text-4xl">account_circle</span>
+                            <div>
+                                <p class="font-semibold text-lg">Chaperone Name</p>
+                                <p class="text-sm text-gray-600">chaperone@example.com</p>
+                                <p class="text-sm text-gray-600">123-456-7890</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Streak Counter & Daily Focus Section -->
+                    <div class="section-card border-accent-teal text-center">
+                        <h2 class="section-title text-accent-teal">Streak Counter & Daily Focus</h2>
+                        <div class="relative w-32 h-32 mx-auto mb-4">
+                            <div class="absolute inset-0 rounded-full border-8 border-gray-200 flex items-center justify-center text-4xl font-bold text-accent-yellow">
+                                7
+                            </div>
+                            <div class="absolute inset-0 rounded-full border-8 border-accent-yellow" style="clip-path: inset(0 50% 0 0); transform: rotate(90deg);"></div>
+                            <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-600 text-sm mt-8">Days Streak</span>
+                        </div>
+                        <p class="text-lg font-semibold text-accent-teal mb-2">Your Daily Focus</p>
+                        <p class="text-gray-600 mb-4">Your next guided meditation awaits.</p>
+                        <button class="app-button bg-accent-teal px-8 py-3 rounded-2xl shadow-lg hover:scale-105 transform transition-transform">Start Practice</button>
+                        <button class="app-button mt-4 bg-gradient-to-r from-purple-500 to-indigo-700 px-8 py-3 rounded-2xl shadow-lg hover:scale-105 transform transition-transform">Daaji Satsang Live (If available)</button>
+                    </div>
+
+                    <!-- Your Tasks Section -->
+                    <div class="section-card border-accent-yellow">
+                        <h2 class="section-title text-accent-yellow">Your Tasks</h2>
+                        <p class="text-sm text-gray-500 mb-4">Your chosen focus areas and pending tasks.</p>
+                        <ul class="space-y-3">
+                            <li class="bg-gray-100 p-3 rounded-lg flex items-center">
+                                <input type="checkbox" class="form-checkbox h-5 w-5 text-accent-teal rounded mr-3">
+                                <div>
+                                    <p class="font-semibold text-primary">Task Name 1</p>
+                                    <p class="text-sm text-gray-600">Status: Pending</p>
+                                </div>
+                            </li>
+                            <li class="bg-gray-100 p-3 rounded-lg flex items-center">
+                                <input type="checkbox" checked class="form-checkbox h-5 w-5 text-accent-teal rounded mr-3">
+                                <div>
+                                    <p class="font-semibold text-primary line-through">Task Name 2</p>
+                                    <p class="text-sm text-gray-600">Status: Completed</p>
+                                </div>
+                            </li>
+                        </ul>
+                        <button class="text-accent-teal text-sm mt-4 underline">View All Tasks</button>
+                    </div>
+
+                    <!-- Your Badges Section -->
+                    <div class="section-card border-accent-yellow">
+                        <h2 class="section-title text-accent-yellow">Your Badges</h2>
+                        <div class="flex-wrap-container">
+                            <div class="flex flex-col items-center gap-1 text-center">
+                                <img src="https://placehold.co/48x48/DAA520/FFFFFF?text=B1" alt="Badge 1" class="w-12 h-12">
+                                <p class="text-xs text-gray-600">First Step</p>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 text-center">
+                                <img src="https://placehold.co/48x48/008080/FFFFFF?text=B2" alt="Badge 2" class="w-12 h-12">
+                                <p class="text-xs text-gray-600">Consistent</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            */
+        }); // End of window.addEventListener('load')
+    </script>
+</body>
+</html>
